@@ -10,5 +10,5 @@ macro(oidn_add_app APP_NAME)
 endmacro()
 
 oidn_add_app(oidnDenoise oidnDenoise.cpp)
-oidn_add_app(oidnBenchmark oidnBenchmark.cpp)
-oidn_add_app(oidnTest oidnTest.cpp "${PROJECT_SOURCE_DIR}/external/catch.hpp")
+# oidn_add_app(oidnBenchmark oidnBenchmark.cpp)
+# oidn_add_app(oidnTest oidnTest.cpp "${PROJECT_SOURCE_DIR}/external/catch.hpp")

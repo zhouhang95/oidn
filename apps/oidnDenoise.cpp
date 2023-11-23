@@ -17,6 +17,9 @@
 #include <ittnotify.h>
 #endif
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 OIDN_NAMESPACE_USING
 
 void printUsage()
@@ -426,6 +429,20 @@ int main(int argc, char* argv[])
       // Save output image
       std::cout << "Saving output" << std::endl;
       saveImage(outputFilename, *output, srgb);
+
+      int w = output->getW();
+      int h = output->getH();
+      int c = output->getC();
+      std::vector<uint8_t> color;
+      color.reserve(w * h * c);
+      for (auto j = 0; j < w * h * c; j++) {
+        float x = output->get(j);
+        int v = clamp(int(std::pow(x, 1.0f / 2.2f) * 255.99f), 0, 255);
+        color.push_back(v);
+      }
+
+      stbi_flip_vertically_on_write(1);
+      stbi_write_jpg((outputFilename + ".1.jpg").c_str(), w, h, c, color.data(), 100);
     }
   }
   catch (const std::exception& e)
