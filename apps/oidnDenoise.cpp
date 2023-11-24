@@ -458,12 +458,15 @@ int main(int argc, char* argv[])
       int h = output->getH();
       int c = output->getC();
       std::vector<uint8_t> color;
+      std::vector<float> pixels;
       color.reserve(w * h * c);
       for (auto j = 0; j < w * h * c; j++) {
         float x = output->get(j);
+        pixels.push_back(x);
         int v = clamp(int(std::pow(x, 1.0f / 2.2f) * 255.99f), 0, 255);
         color.push_back(v);
       }
+      SaveEXR(pixels.data(), w, h, 3, 1, (outputFilename + ".denoise.exr").c_str(), nullptr);
 
       stbi_flip_vertically_on_write(1);
       stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);
