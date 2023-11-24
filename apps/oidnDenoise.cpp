@@ -17,11 +17,35 @@
 #include <ittnotify.h>
 #endif
 
+#define TINYEXR_IMPLEMENTATION
+#include <tinyexr.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
 OIDN_NAMESPACE_USING
 
+std::shared_ptr<ImageBuffer> loadImageEXR(const DeviceRef& device,
+                                          const std::string& filename)
+{
+  int C = 4;
+  int H, W;
+  float* rgba;
+  int ret = LoadEXR(&rgba, &W, &H, filename.c_str(), nullptr);
+  // Read the pixels
+  auto image = std::make_shared<ImageBuffer>(device, W, H, 3, DataType::Float32);
+
+  for (int h = 0; h < H; ++h) {
+    for (int w = 0; w < W; ++w) {
+      for (int c = 0; c < C; ++c) {
+        int i = ((h * W) + w) * C + c; 
+        int ti = ((h * W) + w) * 3 + c; 
+        image->set(ti, rgba[i]);
+      }
+    }
+  }
+
+  return image;
+}
 void printUsage()
 {
   std::cout << "Intel(R) Open Image Denoise" << std::endl;
@@ -255,13 +279,13 @@ int main(int argc, char* argv[])
     std::cout << "Loading input" << std::endl;
 
     if (!albedoFilename.empty())
-      input = albedo = loadImage(device, albedoFilename, false, dataType);
+      input = albedo = loadImageEXR(device, albedoFilename);
 
     if (!normalFilename.empty())
-      input = normal = loadImage(device, normalFilename, dataType);
+      input = normal = loadImageEXR(device, normalFilename);
 
     if (!colorFilename.empty())
-      input = color = loadImage(device, colorFilename, srgb, dataType);
+      input = color = loadImageEXR(device, colorFilename);
 
     if (!input)
       throw std::runtime_error("no input image specified");
@@ -428,7 +452,7 @@ int main(int argc, char* argv[])
     {
       // Save output image
       std::cout << "Saving output" << std::endl;
-      saveImage(outputFilename, *output, srgb);
+      // saveImage(outputFilename, *output, srgb);
 
       int w = output->getW();
       int h = output->getH();
@@ -442,7 +466,7 @@ int main(int argc, char* argv[])
       }
 
       stbi_flip_vertically_on_write(1);
-      stbi_write_jpg((outputFilename + ".1.jpg").c_str(), w, h, c, color.data(), 100);
+      stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);
     }
   }
   catch (const std::exception& e)
