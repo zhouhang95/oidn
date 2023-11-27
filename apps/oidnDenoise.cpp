@@ -313,31 +313,12 @@ int main(int argc, char* argv[])
     colorFilename = filenames[0];
     input = color = loadImageEXR(device, colorFilename);
 
-    if (!input)
-      throw std::runtime_error("no input image specified");
-
     const int width  = input->getW();
     const int height = input->getH();
     std::cout << "Resolution: " << width << "x" << height << std::endl;
 
     // Initialize the output image
-    std::shared_ptr<ImageBuffer> output;
-    if (inplace)
-      output = input;
-    else
-      output = std::make_shared<ImageBuffer>(device, width, height, input->getC(), input->getDataType());
-
-    std::shared_ptr<ImageBuffer> inputCopy;
-    if (inplace && numRuns > 1)
-      inputCopy = input->clone();
-
-    // Load the filter weights if specified
-    std::vector<char> weights;
-    if (!weightsFilename.empty())
-    {
-      std::cout << "Loading filter weights" << std::endl;
-      weights = loadFile(weightsFilename);
-    }
+    std::shared_ptr<ImageBuffer> output = std::make_shared<ImageBuffer>(device, width, height, input->getC(), input->getDataType());
 
     // Initialize the denoising filter
     std::cout << "Initializing filter" << std::endl;
@@ -354,18 +335,9 @@ int main(int argc, char* argv[])
 
     filter.setImage("output", output->getBuffer(), output->getFormat(), output->getW(), output->getH());
 
-    {
-      if (hdr)
-        filter.set("hdr", true);
-      if (srgb)
-        filter.set("srgb", true);
-    }
+    filter.set("hdr", true);
 
     filter.set("quality", OIDN_QUALITY_HIGH);
-
-    if (!weights.empty())
-      filter.setData("weights", weights.data(), weights.size());
-
 
     filter.commit();
 
