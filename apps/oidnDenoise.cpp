@@ -22,6 +22,17 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
+static std::string replaceSubstring(std::string str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if (start_pos != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+    }
+    return str;
+}
+
 OIDN_NAMESPACE_USING
 
 std::shared_ptr<ImageBuffer> loadImageEXR(const DeviceRef& device,
@@ -238,6 +249,19 @@ int main(int argc, char* argv[])
     }
   #endif
 
+  std::vector<std::string> filenames;
+  {
+    for (const auto& entry : fs::directory_iterator(colorFilename)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+        if (entry.path().filename().string().find(".noising.exr") == std::string::npos) {
+            continue;
+        }
+        filenames.push_back(entry.path().string());
+    }
+  }
+
     // Initialize the denoising device
     std::cout << "Initializing device" << std::endl;
     Timer timer;
@@ -278,14 +302,16 @@ int main(int argc, char* argv[])
 
     std::cout << "Loading input" << std::endl;
 
-    if (!albedoFilename.empty())
-      input = albedo = loadImageEXR(device, albedoFilename);
+    // if (!albedoFilename.empty())
+    //   input = albedo = loadImageEXR(device, albedoFilename);
 
-    if (!normalFilename.empty())
-      input = normal = loadImageEXR(device, normalFilename);
+    // if (!normalFilename.empty())
+    //   input = normal = loadImageEXR(device, normalFilename);
 
-    if (!colorFilename.empty())
-      input = color = loadImageEXR(device, colorFilename);
+    // if (!colorFilename.empty())
+    //   input = color = loadImageEXR(device, colorFilename);
+    colorFilename = filenames[0];
+    input = color = loadImageEXR(device, colorFilename);
 
     if (!input)
       throw std::runtime_error("no input image specified");
@@ -448,11 +474,11 @@ int main(int argc, char* argv[])
       signal(SIGINT, SIG_DFL);
     }
 
-    if (!outputFilename.empty())
     {
       // Save output image
       std::cout << "Saving output" << std::endl;
       // saveImage(outputFilename, *output, srgb);
+      outputFilename = replaceSubstring(colorFilename, ".noising.exr", "");
 
       int w = output->getW();
       int h = output->getH();
@@ -466,7 +492,7 @@ int main(int argc, char* argv[])
         int v = clamp(int(std::pow(x, 1.0f / 2.2f) * 255.99f), 0, 255);
         color.push_back(v);
       }
-      SaveEXR(pixels.data(), w, h, 3, 1, (outputFilename + ".denoise.exr").c_str(), nullptr);
+      //SaveEXR(pixels.data(), w, h, 3, 1, (outputFilename + ".denoise.exr").c_str(), nullptr);
 
       stbi_flip_vertically_on_write(1);
       stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);

@@ -28,7 +28,7 @@ if(OIDN_APPS_OPENIMAGEIO)
   find_package(OpenImageIO REQUIRED)
   if(OPENIMAGEIO_VERSION VERSION_GREATER_EQUAL "2.3")
     # OpenImageIO 2.3+ requires C++14
-    set_property(TARGET OpenImageDenoise_utils PROPERTY CXX_STANDARD 14)
+    set_property(TARGET OpenImageDenoise_utils PROPERTY CXX_STANDARD 17)
   endif()
   target_compile_definitions(OpenImageDenoise_utils PRIVATE OIDN_USE_OPENIMAGEIO)
   target_link_libraries(OpenImageDenoise_utils PRIVATE OpenImageIO::OpenImageIO)
