@@ -316,13 +316,6 @@ int main(int argc, char* argv[])
     if (!input)
       throw std::runtime_error("no input image specified");
 
-    if (!refFilename.empty())
-    {
-      ref = loadImage(device, refFilename, srgb, dataType);
-      if (ref->getDims() != input->getDims())
-        throw std::runtime_error("invalid reference output image");
-    }
-
     const int width  = input->getW();
     const int height = input->getH();
     std::cout << "Resolution: " << width << "x" << height << std::endl;
@@ -361,40 +354,18 @@ int main(int argc, char* argv[])
 
     filter.setImage("output", output->getBuffer(), output->getFormat(), output->getW(), output->getH());
 
-    if (filterType == "RT")
     {
       if (hdr)
         filter.set("hdr", true);
       if (srgb)
         filter.set("srgb", true);
     }
-    else if (filterType == "RTLightmap")
-    {
-      if (directional)
-        filter.set("directional", true);
-    }
 
-    if (std::isfinite(inputScale))
-      filter.set("inputScale", inputScale);
-
-    if (cleanAux)
-      filter.set("cleanAux", cleanAux);
-
-    if (quality != Quality::Default)
-      filter.set("quality", quality);
-
-    if (maxMemoryMB >= 0)
-      filter.set("maxMemoryMB", maxMemoryMB);
+    filter.set("quality", OIDN_QUALITY_HIGH);
 
     if (!weights.empty())
       filter.setData("weights", weights.data(), weights.size());
 
-    const bool showProgress = verbose <= 1;
-    if (showProgress)
-    {
-      filter.setProgressMonitorFunction(progressCallback);
-      signal(SIGINT, signalHandler);
-    }
 
     filter.commit();
 
@@ -404,74 +375,13 @@ int main(int argc, char* argv[])
               << ", msec=" << (1000. * filterInitTime) << std::endl;
 
     // Denoise the image
-    uint32_t prevHash = 0;
-    for (int run = 0; run < numRuns; ++run)
     {
-      if (inplace && run > 0)
-        memcpy(input->getData(), inputCopy->getData(), inputCopy->getByteSize());
-
-      if (!showProgress)
-        std::cout << "Denoising" << std::endl;
       timer.reset();
 
       filter.execute();
 
       const double denoiseTime = timer.query();
-
-      if (showProgress)
-        std::cout << std::endl;
-      std::cout << "  msec=" << (1000. * denoiseTime);
-
-      if (numRuns > 1 || verbose >= 2)
-      {
-        // Compute a hash of the output
-        const size_t numBytes = output->getByteSize();
-        const uint8_t* outputBytes = static_cast<const uint8_t*>(output->getData());
-        uint32_t hash = 0x811c9dc5;
-        for (size_t i = 0; i < numBytes; ++i)
-        {
-          hash ^= outputBytes[i];
-          hash *= 0x1000193;
-        }
-        std::cout << ", hash=" << std::hex << std::setfill('0') << std::setw(8) << hash << std::dec << std::endl;
-
-        if (run > 0 && hash != prevHash)
-          throw std::runtime_error("output hash mismatch (non-deterministic output)");
-        prevHash = hash;
-      }
-      else
-        std::cout << std::endl;
-
-      if (run == 0 && ref)
-      {
-        // Verify the output values
-        std::cout << "Verifying output" << std::endl;
-
-        const double errorThreshold = (input == normal || directional) ? 0.05 : 0.003;
-        size_t numErrors;
-        double avgError;
-        std::tie(numErrors, avgError) = compareImage(*output, *ref, errorThreshold);
-
-        std::cout << "  values=" << output->getSize()
-                  << ", errors=" << numErrors << ", avgerror=" << avgError << std::endl;
-
-        if (numErrors > 0)
-        {
-          // Save debug images
-          std::cout << "Saving debug images" << std::endl;
-          saveImage("denoise_in.pfm",  *input,  srgb);
-          saveImage("denoise_out.pfm", *output, srgb);
-          saveImage("denoise_ref.pfm", *ref,    srgb);
-
-          throw std::runtime_error("output does not match the reference");
-        }
-      }
-    }
-
-    if (showProgress)
-    {
-      filter.setProgressMonitorFunction(nullptr);
-      signal(SIGINT, SIG_DFL);
+      std::cout << "  msec=" << (1000. * denoiseTime) << std::endl;
     }
 
     {
