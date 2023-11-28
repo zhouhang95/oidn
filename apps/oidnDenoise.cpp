@@ -282,7 +282,7 @@ int main(int argc, char* argv[])
         if (!entry.is_regular_file()) {
             continue;
         }
-        if (entry.path().filename().string().find(".noising.jpg") == std::string::npos) {
+        if (entry.path().filename().string().find(".jpg") == std::string::npos) {
             continue;
         }
         filenames.push_back(entry.path().string());
@@ -350,8 +350,8 @@ int main(int argc, char* argv[])
     for (auto i = 0; i < filenames.size(); i++) {
     colorFilename = filenames[i];
     color = loadImageJPG(device, colorFilename);
-    albedo = loadImageEXR(device, replaceSubstring(colorFilename, ".noising.jpg", ".albedo.exr"));
-    normal = loadImageEXR(device, replaceSubstring(colorFilename, ".noising.jpg", ".normal.exr"));
+    albedo = loadImageEXR(device, replaceSubstring(colorFilename, ".jpg", ".albedo.exr"));
+    normal = loadImageEXR(device, replaceSubstring(colorFilename, ".jpg", ".normal.exr"));
     // Initialize the denoising filter
     std::cout << "Initializing filter" << std::endl;
     timer.reset();
@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
       // Save output image
       std::cout << "Saving output" << std::endl;
       // saveImage(outputFilename, *output, srgb);
-      outputFilename = replaceSubstring(colorFilename, ".noising.jpg", "");
+      outputFilename = replaceSubstring(colorFilename, ".jpg", "");
 
       int w = output->getW();
       int h = output->getH();
@@ -411,7 +411,7 @@ int main(int argc, char* argv[])
       //SaveEXR(pixels.data(), w, h, 3, 1, (outputFilename + ".denoise.exr").c_str(), nullptr);
 
       stbi_flip_vertically_on_write(0);
-      stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);
+      stbi_write_jpg((outputFilename + ".jpg").c_str(), w, h, c, color.data(), 100);
     }
     }
   }
