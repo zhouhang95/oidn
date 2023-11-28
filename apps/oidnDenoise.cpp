@@ -47,7 +47,7 @@ std::shared_ptr<ImageBuffer> loadImageEXR(const DeviceRef& device,
 
   for (int h = 0; h < H; ++h) {
     for (int w = 0; w < W; ++w) {
-      for (int c = 0; c < C; ++c) {
+      for (int c = 0; c < 3; ++c) {
         int i = ((h * W) + w) * C + c; 
         int ti = ((h * W) + w) * 3 + c; 
         image->set(ti, rgba[i]);
@@ -335,7 +335,9 @@ int main(int argc, char* argv[])
 
     filter.setImage("output", output->getBuffer(), output->getFormat(), output->getW(), output->getH());
 
-    filter.set("hdr", true);
+    if (hdr) {
+      filter.set("hdr", true);
+    }
 
     filter.set("quality", OIDN_QUALITY_HIGH);
 
@@ -376,7 +378,7 @@ int main(int argc, char* argv[])
       }
       //SaveEXR(pixels.data(), w, h, 3, 1, (outputFilename + ".denoise.exr").c_str(), nullptr);
 
-      stbi_flip_vertically_on_write(1);
+      stbi_flip_vertically_on_write(0);
       stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);
     }
   }
