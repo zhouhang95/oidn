@@ -21,6 +21,8 @@
 #include <tinyexr.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -55,6 +57,31 @@ std::shared_ptr<ImageBuffer> loadImageEXR(const DeviceRef& device,
     }
   }
 
+  return image;
+}
+
+std::shared_ptr<ImageBuffer> loadImageJPG(const DeviceRef& device,
+                                          const std::string& filename)
+{
+  int C, H, W;
+  float* data = stbi_loadf(filename.c_str(), &W, &H, &C, 0);
+  if (C != 3) {
+    puts(filename.c_str());
+    puts("C != 3");
+    exit(-1);
+  }
+  // Read the pixels
+  auto image = std::make_shared<ImageBuffer>(device, W, H, 3, DataType::Float32);
+
+  for (int h = 0; h < H; ++h) {
+    for (int w = 0; w < W; ++w) {
+      for (int c = 0; c < C; ++c) {
+        int i = ((h * W) + w) * C + c; 
+        image->set(i, data[i]);
+      }
+    }
+  }
+  stbi_image_free(data);
   return image;
 }
 void printUsage()
@@ -255,7 +282,7 @@ int main(int argc, char* argv[])
         if (!entry.is_regular_file()) {
             continue;
         }
-        if (entry.path().filename().string().find(".noising.exr") == std::string::npos) {
+        if (entry.path().filename().string().find(".noising.jpg") == std::string::npos) {
             continue;
         }
         filenames.push_back(entry.path().string());
@@ -311,7 +338,7 @@ int main(int argc, char* argv[])
     // if (!colorFilename.empty())
     //   input = color = loadImageEXR(device, colorFilename);
     colorFilename = filenames[0];
-    input = color = loadImageEXR(device, colorFilename);
+    input = color = loadImageJPG(device, colorFilename);
 
     const int width  = input->getW();
     const int height = input->getH();
@@ -320,6 +347,11 @@ int main(int argc, char* argv[])
     // Initialize the output image
     std::shared_ptr<ImageBuffer> output = std::make_shared<ImageBuffer>(device, width, height, input->getC(), input->getDataType());
 
+    for (auto i = 0; i < filenames.size(); i++) {
+    colorFilename = filenames[i];
+    color = loadImageJPG(device, colorFilename);
+    albedo = loadImageEXR(device, replaceSubstring(colorFilename, ".noising.jpg", ".albedo.exr"));
+    normal = loadImageEXR(device, replaceSubstring(colorFilename, ".noising.jpg", ".normal.exr"));
     // Initialize the denoising filter
     std::cout << "Initializing filter" << std::endl;
     timer.reset();
@@ -362,7 +394,7 @@ int main(int argc, char* argv[])
       // Save output image
       std::cout << "Saving output" << std::endl;
       // saveImage(outputFilename, *output, srgb);
-      outputFilename = replaceSubstring(colorFilename, ".noising.exr", "");
+      outputFilename = replaceSubstring(colorFilename, ".noising.jpg", "");
 
       int w = output->getW();
       int h = output->getH();
@@ -380,6 +412,7 @@ int main(int argc, char* argv[])
 
       stbi_flip_vertically_on_write(0);
       stbi_write_jpg((outputFilename + ".denoise.jpg").c_str(), w, h, c, color.data(), 100);
+    }
     }
   }
   catch (const std::exception& e)
